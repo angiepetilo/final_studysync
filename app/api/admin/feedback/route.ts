@@ -8,13 +8,40 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // GET: Fetch all feedback (admin use)
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data: feedbackData, error: feedbackError } = await supabase
       .from('feedback')
-      .select('*, profiles(full_name, email)')
+      .select('*')
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-    return NextResponse.json(data || [])
+    if (feedbackError) throw feedbackError
+
+    if (!feedbackData || feedbackData.length === 0) {
+      return NextResponse.json([])
+    }
+
+    const userIds = [...new Set(feedbackData.map((f: any) => f.user_id))]
+    
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds)
+
+    if (profilesError) {
+      console.error('Error fetching profiles for feedback:', profilesError)
+      // Continue anyway, just without profile info
+    }
+
+    const profilesMap = (profilesData || []).reduce((acc: any, p: any) => {
+      acc[p.id] = p
+      return acc
+    }, {})
+
+    const finalData = feedbackData.map((f: any) => ({
+      ...f,
+      profiles: profilesMap[f.user_id] || null
+    }))
+
+    return NextResponse.json(finalData)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

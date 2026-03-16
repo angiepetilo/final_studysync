@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    // Force sign out when landing on login page to prevent auto-login
+    const clearSession = async () => {
+      await supabase.auth.signOut()
+    }
+    clearSession()
+  }, [supabase.auth])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

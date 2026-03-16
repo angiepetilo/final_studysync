@@ -15,8 +15,20 @@ import {
   Check,
   X
 } from 'lucide-react'
+import NotificationBell from '@/components/NotificationBell'
+import UserNav from '@/components/UserNav'
+
+interface SettingsForm {
+  full_name: string;
+  email: string;
+  presence: string;
+  emailSummaries: boolean;
+  taskReminders: boolean;
+  collabSync: boolean;
+}
 
 export default function SettingsPage() {
+
   const supabase = createClient()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -24,7 +36,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   
   // Settings State
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<SettingsForm>({
+
     full_name: '',
     email: '',
     presence: 'Active',
@@ -33,7 +46,8 @@ export default function SettingsPage() {
     collabSync: false
   })
   
-  const [initialForm, setInitialForm] = useState<any>(null)
+  const [initialForm, setInitialForm] = useState<SettingsForm | null>(null)
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,15 +88,17 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     // In a real app, update Supabase here
-    await new Promise(r => setTimeout(r, 1000))
+    await new Promise(r => setTimeout(r, 500))
     setInitialForm(form)
     setHasChanges(false)
     setSaving(false)
   }
 
   const handleDiscard = () => {
-    setForm(initialForm)
-    setHasChanges(false)
+    if (initialForm) {
+      setForm(initialForm)
+      setHasChanges(false)
+    }
   }
 
   if (loading) {
@@ -99,9 +115,15 @@ export default function SettingsPage() {
       <div className="max-w-6xl mx-auto space-y-16">
         
         {/* Header */}
-        <div>
-          <span className="text-[0.7rem] font-black text-indigo-600 uppercase tracking-[0.2em] mb-3 block">Account Configuration</span>
-          <h1 className="text-5xl font-black text-slate-900 tracking-tight">System Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <span className="text-[0.7rem] font-black text-indigo-600 uppercase tracking-[0.2em] mb-3 block">Account Configuration</span>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tight">System Settings</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationBell userId={profile?.id || ''} className="w-12 h-12 rounded-2xl bg-white border border-slate-100" iconSize={20} />
+            <UserNav user={{ id: profile?.id || '', email: profile?.email || '', full_name: profile?.full_name || '' }} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -187,11 +209,12 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-black text-slate-900">{item.title}</h3>
                         <button 
-                          onClick={() => setForm({...form, [item.key]: !form[item.key] as any})}
-                          className={`w-12 h-6 rounded-full relative transition-colors ${form[item.key as keyof typeof form] ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                          onClick={() => setForm({...form, [item.key]: !form[item.key as keyof SettingsForm]})}
+                          className={`w-12 h-6 rounded-full relative transition-colors ${form[item.key as keyof SettingsForm] ? 'bg-indigo-600' : 'bg-slate-200'}`}
                         >
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form[item.key as keyof typeof form] ? 'left-7' : 'left-1'}`} />
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form[item.key as keyof SettingsForm] ? 'left-7' : 'left-1'}`} />
                         </button>
+
                       </div>
                       <p className="text-[0.7rem] text-slate-400 font-bold leading-relaxed">{item.desc}</p>
                     </div>
