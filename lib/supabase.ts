@@ -12,12 +12,14 @@ function isValidSupabaseConfig(): boolean {
   }
 }
 
+let mockClient: any = null
 let client: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
   if (!isValidSupabaseConfig()) {
+    if (mockClient) return mockClient
+    
     // Return a mock client that won't crash but won't work either
-    // This lets pages render with a "not configured" state
     const handler: ProxyHandler<object> = {
       get(_target, prop) {
         if (prop === 'auth') {
@@ -25,49 +27,16 @@ export function createClient() {
             get() {
               return async () => ({
                 data: { user: null, session: null, users: [] },
-                error: { message: 'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local' },
+                error: { message: 'Supabase is not configured' },
               })
             },
           })
         }
-        if (prop === 'from') {
-          return () => new Proxy({}, {
-            get() {
-              return (..._args: unknown[]) => new Proxy({}, {
-                get() {
-                  return (..._a: unknown[]) => new Proxy({}, {
-                    get(_t, p) {
-                      if (p === 'then') return undefined
-                      return (..._b: unknown[]) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
-                    },
-                  })
-                },
-              })
-            },
-          })
-        }
-        if (prop === 'channel' || prop === 'removeChannel') {
-          return (..._args: unknown[]) => new Proxy({}, {
-            get() {
-              return (..._a: unknown[]) => new Proxy({}, { get() { return () => ({}) } })
-            },
-          })
-        }
-        if (prop === 'storage') {
-          return new Proxy({}, {
-            get() {
-              return () => new Proxy({}, {
-                get() {
-                  return () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
-                },
-              })
-            },
-          })
-        }
-        return undefined
+        return () => new Proxy({}, { get() { return () => ({}) } })
       },
     }
-    return new Proxy({}, handler) as ReturnType<typeof createBrowserClient>
+    mockClient = new Proxy({}, handler)
+    return mockClient as ReturnType<typeof createBrowserClient>
   }
 
   if (!client) {
@@ -77,6 +46,13 @@ export function createClient() {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
+        storage: typeof window !== 'undefined' 
+          ? {
+              getItem: (key: string) => localStorage.getItem(key),
+              setItem: (key: string, value: string) => localStorage.setItem(key, value),
+              removeItem: (key: string) => localStorage.removeItem(key),
+            }
+          : undefined
       },
     })
   }

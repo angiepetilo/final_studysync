@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import nodemailer from 'nodemailer'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -60,8 +61,92 @@ export async function PATCH(request: Request) {
     const { error } = await supabase.from('feedback').update(updates).eq('id', id)
     if (error) throw error
 
+    // Send email notification if it's a reply
+    if (admin_reply) {
+      try {
+        // Fetch student email
+        const { data: fb } = await supabase.from('feedback').select('user_id, message').eq('id', id).single()
+        if (fb) {
+          const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', fb.user_id).single()
+          if (prof?.email && process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: { user: process.env.SMTP_EMAIL, pass: process.env.SMTP_PASSWORD }
+            })
+
+            await transporter.sendMail({
+              from: `"StudySync Support" <${process.env.SMTP_EMAIL}>`,
+              to: prof.email,
+              subject: 'StudySync - Update on your feedback',
+              html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                  <h2>Hello ${prof.full_name || 'Student'},</h2>
+                  <p>An administrator has replied to your feedback:</p>
+                  <blockquote style="background: #f4f4f4; padding: 15px; border-left: 4px solid #6C63FF; margin: 20px 0;">
+                    <strong>Your Message:</strong><br/>
+                    "${fb.message}"
+                  </blockquote>
+                  <div style="background: #EEF2FF; padding: 15px; border-radius: 8px;">
+                    <strong>Admin Reply:</strong><br/>
+                    "${admin_reply}"
+                  </div>
+                  <p style="margin-top: 20px;">Log in to StudySync for more details.</p>
+                </div>
+              `
+            })
+            console.log(`Email notification sent to ${prof.email}`)
+          }
+        }
+      } catch (emailErr) {
+        console.error('Failed to send admin-reply email notification:', emailErr)
+        // We don't throw here, as the DB update was successful
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+// POST: Public endpoint to submit feedback (bypasses RLS via service role)
+export async function POST(request: Request) {
+  try {
+    const { user_id, name, email, type, message } = await request.json()
+    
+    let effectiveUserId = user_id
+    
+    // If guest and table requires non-null user_id, find a fallback
+    if (!effectiveUserId) {
+      const { data: fallbackUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .single()
+      
+      if (fallbackUser) {
+        effectiveUserId = fallbackUser.id
+      }
+    }
+
+    // Construct a rich message for the admin
+    const richMessage = `[${type || 'General'}] From ${name || 'Anonymous'} (${email || 'No Email'}): ${message}`
+
+    const { data, error } = await supabase
+      .from('feedback')
+      .insert({
+        user_id: effectiveUserId,
+        message: richMessage,
+        status: 'new'
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Feedback submission error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

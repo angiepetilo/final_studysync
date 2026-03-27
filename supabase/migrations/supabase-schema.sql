@@ -106,6 +106,7 @@ create table if not exists public.collaborations (
   owner_id uuid references auth.users on delete cascade not null,
   title text not null,
   description text,
+  type text check (type in ('study_group', 'project', 'notes_sharing')),
   visibility text default 'private' check (visibility in ('private', 'public')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -121,16 +122,34 @@ create table if not exists public.collaboration_members (
   unique(collaboration_id, user_id)
 );
 
--- 9. CHAT MESSAGES
-create table if not exists public.chat_messages (
+create table if not exists public.collaboration_messages (
   id uuid default gen_random_uuid() primary key,
   collaboration_id uuid references public.collaborations on delete cascade not null,
   user_id uuid references auth.users on delete cascade not null,
-  message text not null,
+  content text not null,
+  file_url text,
+  file_name text,
+  file_type text,
+  message_type text default 'text',
+  metadata jsonb,
   created_at timestamptz default now()
 );
 
--- 10. NOTIFICATIONS
+-- 10. COLLABORATION RESOURCES
+create table if not exists public.collaboration_resources (
+  id uuid default gen_random_uuid() primary key,
+  collaboration_id uuid references public.collaborations on delete cascade not null,
+  resource_type text not null check (resource_type in ('file', 'note', 'task', 'url')),
+  resource_id uuid,
+  title text not null,
+  description text,
+  url text,
+  file_size text,
+  shared_by uuid references auth.users on delete cascade not null,
+  created_at timestamptz default now()
+);
+
+-- 11. NOTIFICATIONS
 create table if not exists public.notifications (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
@@ -152,7 +171,8 @@ alter table public.files enable row level security;
 alter table public.schedules enable row level security;
 alter table public.collaborations enable row level security;
 alter table public.collaboration_members enable row level security;
-alter table public.chat_messages enable row level security;
+alter table public.collaboration_messages enable row level security;
+alter table public.collaboration_resources enable row level security;
 alter table public.notifications enable row level security;
 
 -- Profiles: users can read/update their own profile
@@ -209,12 +229,20 @@ create policy "Owners can delete members" on public.collaboration_members for de
   exists (select 1 from public.collaborations c where c.id = collaboration_id and c.owner_id = auth.uid())
 );
 
--- Chat Messages: members of the collaboration can read/write
-create policy "Members can view chat" on public.chat_messages for select using (
+-- Collaboration Messages: members of the collaboration can read/write
+create policy "Members can view messages" on public.collaboration_messages for select using (
   exists (select 1 from public.collaboration_members cm where cm.collaboration_id = collaboration_id and cm.user_id = auth.uid())
 );
-create policy "Members can send chat" on public.chat_messages for insert with check (
+create policy "Members can send messages" on public.collaboration_messages for insert with check (
   auth.uid() = user_id and
+  exists (select 1 from public.collaboration_members cm where cm.collaboration_id = collaboration_id and cm.user_id = auth.uid())
+);
+
+-- Collaboration Resources
+create policy "Members can view resources" on public.collaboration_resources for select using (
+  exists (select 1 from public.collaboration_members cm where cm.collaboration_id = collaboration_id and cm.user_id = auth.uid())
+);
+create policy "Members can share resources" on public.collaboration_resources for insert with check (
   exists (select 1 from public.collaboration_members cm where cm.collaboration_id = collaboration_id and cm.user_id = auth.uid())
 );
 
@@ -234,6 +262,6 @@ create policy "Users can update own notifications" on public.notifications for u
 -- ============================================
 -- REALTIME (enable for chat_messages)
 -- ============================================
-alter publication supabase_realtime add table public.chat_messages;
+alter publication supabase_realtime add table public.collaboration_messages;
 alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.tasks;

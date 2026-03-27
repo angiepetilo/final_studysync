@@ -1,0 +1,2 @@
+app/(dashboard)/collaborations/[id]/CollaborationRoomClient.tsx(686,21): error TS2304: Cannot find name 'broadcastTyping'.
+context/DataContext.tsx(222,11): error TS7006: Parameter 'payload' implicitly has an 'any' type.
