@@ -1,0 +1,19 @@
+
+Oops! Something went wrong! :(
+
+ESLint: 9.39.4
+
+Error: ESLint configuration in  » eslint-config-next/core-web-vitals » C:\Users\addmi\studysync\node_modules\eslint-config-next\index.js » plugin:@next/next/recommended is invalid:
+	- Unexpected top-level property "name".
+
+Referenced from: C:\Users\addmi\studysync\node_modules\eslint-config-next\index.js
+    at ConfigValidator.validateConfigSchema (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/shared/config-validator.js:330:19)
+    at ConfigArrayFactory._normalizeConfigData (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:676:19)
+    at ConfigArrayFactory._loadExtendedPluginConfig (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:899:25)
+    at ConfigArrayFactory._loadExtends (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:812:29)
+    at ConfigArrayFactory._normalizeObjectConfigDataBody (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:752:25)
+    at _normalizeObjectConfigDataBody.next (<anonymous>)
+    at ConfigArrayFactory._normalizeObjectConfigData (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:697:20)
+    at _normalizeObjectConfigData.next (<anonymous>)
+    at ConfigArrayFactory._normalizeObjectConfigDataBody (file:///C:/Users/addmi/studysync/node_modules/@eslint/eslintrc/lib/config-array-factory.js:752:25)
+    at _normalizeObjectConfigDataBody.next (<anonymous>)

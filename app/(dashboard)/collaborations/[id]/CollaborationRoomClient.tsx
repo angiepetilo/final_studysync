@@ -19,6 +19,8 @@ import PageLayout from '@/components/layout/PageLayout'
 import { Card } from '@/components/shared/Card'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { useData } from '@/context/DataContext'
 
 // Resource Picker Modal Component
 function ResourcePicker({
@@ -186,6 +188,7 @@ export default function CollaborationRoomClient({
   const queryClient = useQueryClient()
   const router = useRouter()
   const supabase = createClient()
+  const { setHasUnreadMessages } = useData()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -276,8 +279,10 @@ export default function CollaborationRoomClient({
         schema: 'public',
         table: 'collaboration_messages',
         filter: `collaboration_id=eq.${collaboration.id}`
-      }, () => {
-        debouncedInvalidate()
+      }, (payload: any) => {
+        if (payload.new.user_id !== userProfile.id) {
+          debouncedInvalidate()
+        }
       })
       .subscribe(async (status: any) => {
         if (status === 'SUBSCRIBED') {
@@ -296,6 +301,23 @@ export default function CollaborationRoomClient({
     }
   }, [collaboration.id, supabase, userProfile, queryClient])
 
+  // Update last_read_at and clear global unread dot when entering the room
+  useEffect(() => {
+    if (!collaboration.id || !userProfile.id) return
+
+    const updateReadStatus = async () => {
+      await supabase
+        .from('collaboration_members')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('collaboration_id', collaboration.id)
+        .eq('user_id', userProfile.id)
+      
+      setHasUnreadMessages(false)
+    }
+
+    updateReadStatus()
+  }, [collaboration.id, userProfile.id, supabase, setHasUnreadMessages])
+
   const broadcastTyping = () => {
     if (!channelRef.current) return
     channelRef.current.send({
@@ -308,22 +330,41 @@ export default function CollaborationRoomClient({
     })
   }
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim() || sending) return
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    
+    // 1. Sanitize and validate
+    const trimmedMessage = newMessage.trim()
+    if (!trimmedMessage || sending) return
+    
+    if (typeof trimmedMessage !== 'string') {
+      console.error('Content is not a string')
+      return
+    }
+
     setSending(true)
 
-    const { success } = await sendCollaborationMessage({
-      collaborationId: collaboration.id,
-      userId: userProfile.id,
-      content: newMessage.trim(),
-      messageType: 'text'
-    })
+    try {
+      const { success, error } = await sendCollaborationMessage({
+        collaborationId: collaboration.id,
+        userId: userProfile.id,
+        content: trimmedMessage,
+        messageType: 'text'
+      })
 
-    if (success) {
-      setNewMessage('')
+      if (success) {
+        setNewMessage('')
+      } else {
+        toast.error(error === 'Failed to fetch' 
+          ? 'Connection lost. Check your internet connection.' 
+          : 'Message failed to send. Please try again.')
+      }
+    } catch (error) {
+      console.error('Send error:', error)
+      toast.error('An unexpected error occurred while sending.')
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
 
   const handleShareResource = async (type: 'file' | 'note' | 'task', item: any) => {
@@ -591,7 +632,7 @@ export default function CollaborationRoomClient({
                                 <p className={cn("text-base font-black truncate", isOwn ? "text-white" : "text-slate-900 dark:text-white")}>{msg.metadata?.note_title}</p>
                               </div>
                             </div>
-                            <p className={cn("text-xs font-medium italic line-clamp-2 mb-6", isOwn ? "text-indigo-100/60" : "text-slate-500")}>"{msg.metadata?.note_preview}..."</p>
+                            <p className={cn("text-xs font-medium italic line-clamp-2 mb-6", isOwn ? "text-indigo-100/60" : "text-slate-500")}>&quot;{msg.metadata?.note_preview}...&quot;</p>
                             <Link href={`/notes?id=${msg.metadata?.note_id}`} className={cn("flex items-center justify-center w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all", isOwn ? "bg-white text-indigo-600 hover:bg-indigo-50" : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-100")}>Open Note →</Link>
                           </div>
                           {msg.content && <p>{msg.content}</p>}
@@ -667,7 +708,10 @@ export default function CollaborationRoomClient({
                 {showEmoji && (
                   <div className="absolute bottom-full right-0 mb-6 z-50">
                     <EmojiPicker
-                      onEmojiClick={(ed) => { setNewMessage(p => p + ed.emoji); setShowEmoji(false) }}
+                      onEmojiClick={(emojiData) => { 
+                        setNewMessage(prev => prev + emojiData.emoji)
+                        setShowEmoji(false) 
+                      }}
                     />
                   </div>
                 )}

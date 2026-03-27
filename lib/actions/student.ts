@@ -273,21 +273,37 @@ export async function getDiscoverableCollaborations(userId: string) {
 export async function getCollaborationMessages(collaborationId: string) {
   const supabase = createClient()
   
-  const { data, error } = await supabase
+  // 1. Fetch messages first (without join)
+  const { data: messages, error: messagesError } = await supabase
     .from('collaboration_messages')
-    .select(`
-      *,
-      profiles(full_name, email, avatar_url)
-    `)
+    .select('*')
     .eq('collaboration_id', collaborationId)
     .order('created_at', { ascending: true })
   
-  if (error) {
-    console.error('Error fetching collaboration messages:', error)
+  if (messagesError) {
+    console.error('Error fetching collaboration messages:', messagesError)
     return []
   }
-  
-  return data
+
+  if (!messages || messages.length === 0) return []
+
+  // 2. Fetch profiles for all users in one go
+  const userIds = [...new Set(messages.map((m: any) => m.user_id))]
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, avatar_url')
+    .in('id', userIds)
+
+  if (profilesError) {
+    console.error('Error fetching profiles:', profilesError)
+    // Still return messages if profiles fail
+  }
+
+  // 3. Merge profiles back into messages
+  return messages.map((msg: any) => ({
+    ...msg,
+    profiles: profiles?.find((p: any) => p.id === msg.user_id) || null
+  }))
 }
 
 // Send collaboration message
@@ -314,11 +330,24 @@ export async function sendCollaborationMessage(params: {
 
   const supabase = createClient()
   
-  const { data, error } = await supabase
+  // 1. Verify Auth User ID vs Profile ID (UserId)
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  console.log('--- Send Message Debug ---')
+  console.log('Auth user id:', user?.id)
+  console.log('Profile id being used (params.userId):', userId)
+  
+  if (authError) {
+    console.error('Auth verification error:', authError)
+  }
+
+  const effectiveUserId = user?.id || userId
+
+  // 2. Insert message with detailed logging
+  const { data: insertedData, error: insertError } = await supabase
     .from('collaboration_messages')
     .insert({
       collaboration_id: collaborationId,
-      user_id: userId,
+      user_id: effectiveUserId, // Use auth user id if available
       content: content || '',
       file_url: fileUrl,
       file_name: fileName,
@@ -327,18 +356,35 @@ export async function sendCollaborationMessage(params: {
       metadata: metadata,
       created_at: new Date().toISOString()
     })
-    .select(`
-      *,
-      profiles(full_name, email, avatar_url)
-    `)
+    .select('*')
     .single()
   
-  if (error) {
-    console.error('Error sending message:', error)
-    return { success: false, error: error.message }
+  if (insertError) {
+    console.error('Full send error:', {
+      code: (insertError as any).code,
+      message: insertError.message,
+      details: (insertError as any).details,
+      hint: (insertError as any).hint,
+      tableName: 'collaboration_messages',
+      payload: { collaborationId, effectiveUserId, contentLen: content?.length }
+    })
+    return { success: false, error: insertError.message }
+  }
+
+  // 2. Fetch profile separately (to avoid 400 join error)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, email, avatar_url')
+    .eq('id', userId)
+    .single()
+  
+  // Merge profile into response
+  const mergedData = {
+    ...insertedData,
+    profiles: profile || null
   }
   
-  return { success: true, data }
+  return { success: true, data: mergedData }
 }
 
 // Share a resource (Note, Task, File) to a collaboration

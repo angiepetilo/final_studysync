@@ -31,7 +31,7 @@ export default function Sidebar({ user }: { user: { id: string; email?: string; 
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const { notifications, refreshData } = useData()
+  const { notifications, refreshData, hasUnreadMessages } = useData()
   const [showNotifications, setShowNotifications] = useState(false)
 
   const markAsRead = async (id: string) => {
@@ -80,6 +80,9 @@ export default function Sidebar({ user }: { user: { id: string; email?: string; 
                     size={22} 
                     className={`transition-colors flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600'}`} 
                   />
+                  {item.href === '/collaborations' && hasUnreadMessages && (
+                    <span className="absolute top-3 left-7 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 shadow-sm animate-pulse" />
+                  )}
                 </div>
                 <span className="text-[0.95rem] tracking-tight lg:block hidden truncate">{item.label}</span>
                 {isActive && <ChevronRight size={16} className="ml-auto opacity-60 lg:block hidden" />}

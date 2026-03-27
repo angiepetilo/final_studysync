@@ -81,7 +81,7 @@ export default function FilesPage() {
       .or('message_type.eq.file,message_type.eq.image')
       .not('file_url', 'is', null)
     
-    const formattedCollabFiles: FileEntry[] = (collabMessages || []).map(m => ({
+    const formattedCollabFiles: FileEntry[] = (collabMessages || []).map((m: any) => ({
       id: m.id,
       name: m.file_name || 'Shared File',
       storage_path: m.file_url, // Using URL as path for Collab files
@@ -96,7 +96,7 @@ export default function FilesPage() {
     }))
 
     const allFiles = [
-      ...(vaultFiles || []).map(f => ({ ...f, source: 'vault' as const })),
+      ...(vaultFiles || []).map((f: any) => ({ ...f, source: 'vault' as const })),
       ...formattedCollabFiles
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 

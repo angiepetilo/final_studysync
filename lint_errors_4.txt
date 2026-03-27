@@ -1,0 +1,28 @@
+
+> studysync@0.1.0 lint
+> eslint
+
+
+Oops! Something went wrong! :(
+
+ESLint: 9.39.4
+
+TypeError: context.getAncestors is not a function
+Occurred while linting C:\Users\addmi\studysync\android\app\src\main\assets\public\sw.js:1
+Rule: "@next/next/no-duplicate-head"
+    at ReturnStatement (C:\Users\addmi\studysync\node_modules\@next\eslint-plugin-next\dist\rules\no-duplicate-head.js:29:41)
+    at ruleErrorHandler (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:1173:33)
+    at C:\Users\addmi\studysync\node_modules\eslint\lib\linter\source-code-visitor.js:76:46
+    at Array.forEach (<anonymous>)
+    at SourceCodeVisitor.callSync (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\source-code-visitor.js:76:30)
+    at C:\Users\addmi\studysync\node_modules\eslint\lib\linter\source-code-traverser.js:291:18
+    at Array.forEach (<anonymous>)
+    at SourceCodeTraverser.traverseSync (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\source-code-traverser.js:290:10)
+    at runRules (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:1214:12)
+    at #flatVerifyWithoutProcessors (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:2115:4)
+    at Linter._verifyWithFlatConfigArrayAndWithoutProcessors (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:2203:43)
+    at Linter._verifyWithFlatConfigArray (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:2306:15)
+    at Linter.verify (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:1677:10)
+    at Linter.verifyAndFix (C:\Users\addmi\studysync\node_modules\eslint\lib\linter\linter.js:2571:20)
+    at verifyText (C:\Users\addmi\studysync\node_modules\eslint\lib\eslint\eslint-helpers.js:1180:45)
+    at readAndVerifyFile (C:\Users\addmi\studysync\node_modules\eslint\lib\eslint\eslint-helpers.js:1321:10)

@@ -70,6 +70,8 @@ interface DataContextType {
   loading: boolean
   refreshData: () => Promise<void>
   profile: { full_name: string, avatar_url: string } | null
+  hasUnreadMessages: boolean
+  setHasUnreadMessages: (val: boolean) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -77,6 +79,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined)
 export function DataProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const [hasUnreadMessages, setHasUnreadMessages] = React.useState(false)
 
   // 1. Auth Query (Current User)
   const { data: authUser, isLoading: authLoading } = useQuery({
@@ -164,6 +167,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
     enabled: !!userId && typeof window !== 'undefined',
   })
 
+  // 8. Unread Messages Logic
+  const checkUnreadMessages = React.useCallback(async () => {
+    if (!userId) return
+
+    const { data: rooms } = await supabase
+      .from('collaboration_members')
+      .select('collaboration_id, last_read_at')
+      .eq('user_id', userId)
+
+    for (const room of rooms ?? []) {
+      const { count } = await supabase
+        .from('collaboration_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('collaboration_id', room.collaboration_id)
+        .neq('user_id', userId)
+        .gt('created_at', room.last_read_at ?? new Date(0).toISOString())
+
+      if (count && count > 0) {
+        setHasUnreadMessages(true)
+        return
+      }
+    }
+    setHasUnreadMessages(false)
+  }, [supabase, userId])
+
+  useEffect(() => {
+    if (userId) {
+      checkUnreadMessages()
+    }
+  }, [userId, checkUnreadMessages])
+
   // Real-time Invalidation
   useEffect(() => {
     if (!userId) return
@@ -179,8 +213,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .subscribe()
     })
 
+    const globalMessagesChannel = supabase
+      .channel('global-unread-messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'collaboration_messages',
+      }, (payload: any) => {
+        if (payload.new.user_id !== userId) {
+          setHasUnreadMessages(true)
+        }
+      })
+      .subscribe()
+
     return () => {
       channels.forEach(channel => supabase.removeChannel(channel))
+      supabase.removeChannel(globalMessagesChannel)
     }
   }, [supabase, userId, queryClient])
 
@@ -224,10 +272,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     profile: profileData ? {
       full_name: profileData.full_name || '',
       avatar_url: profileData.avatar_url || ''
-    } : null
+    } : null,
+    hasUnreadMessages,
+    setHasUnreadMessages
   }), [
     authUser, profileData, tasksData, coursesData, schedulesData, notesData, notifData, 
-    isInitialLoading, userId, queryClient
+    isInitialLoading, userId, queryClient, hasUnreadMessages
   ])
 
   return (

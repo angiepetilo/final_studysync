@@ -4,11 +4,13 @@ import React from 'react'
 import NotificationBell from '@/components/dashboard/NotificationBell'
 import UserNav from '@/components/dashboard/UserNav'
 import { useData } from '@/context/DataContext'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { MessageSquare } from 'lucide-react'
 
 export const Navbar = () => {
-  const { user } = useData()
+  const { user, hasUnreadMessages } = useData()
   const pathname = usePathname()
+  const router = useRouter()
   
   // Map pathname to breadcrumb/page title if needed
   const getPageTitle = () => {
@@ -30,11 +32,24 @@ export const Navbar = () => {
         <div className="flex items-center gap-4">
           {user && (
             <>
+              <button
+                onClick={() => router.push('/collaborations')}
+                className="relative w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center text-slate-500 group"
+              >
+                <MessageSquare size={20} className="group-hover:scale-110 transition-transform" />
+                
+                {hasUnreadMessages && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse shadow-sm" />
+                )}
+              </button>
+
+              <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-1" />
+
               <NotificationBell 
                 userId={user.id} 
                 className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" 
               />
-              <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-2" />
+              <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-1" />
               <UserNav user={user} />
             </>
           )}

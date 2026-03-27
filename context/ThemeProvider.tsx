@@ -16,16 +16,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('system')
   const supabase = createClient()
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null
-    if (savedTheme) {
-      setThemeState(savedTheme)
-      applyTheme(savedTheme)
-    } else {
-      applyTheme('system')
-    }
-  }, [])
-
   const applyTheme = (t: Theme) => {
     const root = window.document.documentElement
     root.classList.remove('light', 'dark')
@@ -37,6 +27,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add(t)
     }
   }
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme | null
+    if (savedTheme) {
+      setThemeState(savedTheme)
+      applyTheme(savedTheme)
+    } else {
+      applyTheme('system')
+    }
+  }, [])
 
   const setTheme = async (t: Theme) => {
     setThemeState(t)

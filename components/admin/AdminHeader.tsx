@@ -39,7 +39,7 @@ export function AdminHeader({ isMobile, onMenuClick, searchPlaceholder = "Search
         event: 'UPDATE',
         schema: 'public',
         table: 'feedback'
-      }, (payload) => {
+      }, (payload: any) => {
         // If status changed from pending, decrement
         if (payload.new.status !== 'pending' && payload.old.status === 'pending') {
           setNewFeedbackCount(prev => Math.max(0, prev - 1))

@@ -50,12 +50,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    if (user) {
-      fetchSettings()
-    }
-  }, [user])
-
   const fetchSettings = async () => {
     try {
       const { data, error } = await supabase.from('pomodoro_settings').select('*').eq('user_id', user?.id).maybeSingle()
@@ -69,6 +63,12 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  useEffect(() => {
+    if (user) {
+      fetchSettings()
+    }
+  }, [user])
+
   const setSettings = async (s: Partial<PomodoroSettings>) => {
     const newSettings = { ...settings, ...s }
     setSettingsState(newSettings)
@@ -80,19 +80,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       setTimeLeft(newSettings.focus_duration * 60)
     }
   }
-
-  useEffect(() => {
-    if (isActive && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => prev - 1)
-      }, 1000)
-    } else if (timeLeft === 0) {
-      handleTimerComplete()
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [isActive, timeLeft])
 
   const handleTimerComplete = () => {
     setIsActive(false)
@@ -120,6 +107,19 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       setIsActive(true)
     }
   }
+
+  useEffect(() => {
+    if (isActive && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => prev - 1)
+      }, 1000)
+    } else if (timeLeft === 0) {
+      handleTimerComplete()
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [isActive, timeLeft])
 
   const startTimer = () => setIsActive(true)
   const pauseTimer = () => setIsActive(false)
