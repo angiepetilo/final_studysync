@@ -321,7 +321,7 @@ export default function CoursesPage() {
                   Master Your Schedule
                 </h3>
                 <p className="text-sm font-medium text-slate-400 leading-relaxed max-w-lg">
-                  StudSync analyzes your course load to suggest optimal study blocks. You're currently performing 15% better in your core technical subjects compared to last semester.
+                  StudSync analyzes your course load to suggest optimal study blocks. You&apos;re currently performing 15% better in your core technical subjects compared to last semester.
                 </p>
                 <button className="bg-slate-900 hover:bg-indigo-600 text-white font-black text-xs px-8 py-4 rounded-2xl transition-all shadow-xl shadow-slate-200 active:scale-95">
                   View Full Analytics

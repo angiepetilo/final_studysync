@@ -497,7 +497,7 @@ export default function SchedulePage() {
                     Study Tip
                   </h4>
                   <p className="text-[0.7rem] font-bold text-indigo-50/80 leading-relaxed">
-                    "The Feynman Technique: Try explaining your subject to someone with no background in it. If you struggle, you've found a gap in your knowledge."
+                    &quot;The Feynman Technique: Try explaining your subject to someone with no background in it. If you struggle, you&apos;ve found a gap in your knowledge.&quot;
                   </p>
                 </div>
                 <button className="bg-white text-indigo-600 font-black text-[0.65rem] px-8 py-3.5 rounded-full transition-all hover:bg-indigo-50 active:scale-95 relative z-10">
