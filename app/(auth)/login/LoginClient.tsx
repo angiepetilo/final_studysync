@@ -11,6 +11,7 @@ export default function LoginClient() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -19,21 +20,17 @@ export default function LoginClient() {
     setLoading(true)
     setError(null)
 
-    // PROACTIVE CLEANUP: Clear any existing session or stale data before new login
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    localStorage.clear()
-    sessionStorage.clear()
-
     const result = await signInUser(email, password)
-
+    
     if (result.success) {
-      router.push('/dashboard')
+      setRedirecting(true)
+      // Force a full reload on redirect to dashboard to ensure DataContext 
+      // and other providers synchronize with the new auth session correctly.
+      window.location.href = '/dashboard'
     } else {
       setError(result.error || 'Login failed')
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -49,21 +46,31 @@ export default function LoginClient() {
         <span className="text-xl font-black tracking-tighter text-white">StudSync</span>
       </div>
 
-      <div className="w-full max-w-[480px] bg-[#0F172A] rounded-[2.5rem] p-12 shadow-sm border border-slate-800 mt-12 mb-20">
+      <div className="w-full max-w-[480px] bg-[#0F172A] rounded-[2.5rem] p-12 shadow-sm border border-slate-800 mt-12 mb-20 relative overflow-hidden">
+        {redirecting && (
+          <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fadeIn">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/20">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">Authenticated</h3>
+            <p className="text-slate-400 font-bold text-sm">Entering your workspace...</p>
+          </div>
+        )}
+
         <div className="text-center mb-10">
           <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">Welcome Back</h1>
           <p className="text-slate-400 font-medium">Sign in to your weightless workspace.</p>
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-semibold mb-8 text-center border border-red-100">
+          <div className="bg-rose-500/10 text-rose-500 p-4 rounded-xl text-sm font-bold mb-8 text-center border border-rose-500/20 animate-shake">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-[0.65rem] font-black text-slate-500 uppercase tracking-[0.15em] mb-3 ml-1">
+            <label className={`block text-[0.65rem] font-black uppercase tracking-[0.15em] mb-3 ml-1 ${error ? 'text-rose-500' : 'text-slate-500'}`}>
               Email Address
             </label>
             <input
@@ -72,14 +79,14 @@ export default function LoginClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-6 py-4 rounded-xl bg-[#030712] border border-slate-800 focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600"
+              className={`w-full px-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 focus:outline-none ${error ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:bg-[#030712] focus:border-indigo-500/50'}`}
               autoComplete="email"
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-3 ml-1">
-              <label className="block text-[0.65rem] font-black text-slate-500 uppercase tracking-[0.15em]">
+              <label className={`block text-[0.65rem] font-black uppercase tracking-[0.15em] ${error ? 'text-rose-500' : 'text-slate-500'}`}>
                 Password
               </label>
               <Link href="#" className="text-[0.65rem] font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">
@@ -92,18 +99,18 @@ export default function LoginClient() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-6 py-4 rounded-xl bg-[#030712] border border-slate-800 focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600"
+              className={`w-full px-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 focus:outline-none ${error ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:bg-[#030712] focus:border-indigo-500/50'}`}
               autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || redirecting}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 mt-4 active:scale-[0.98]"
           >
             {loading ? <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" /> : null}
-            Login to StudSync
+            {redirecting ? 'Redirecting...' : 'Login to StudSync'}
           </button>
         </form>
 

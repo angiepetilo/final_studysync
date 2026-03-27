@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
 
 export const Navbar = () => {
-  const { user, hasUnreadMessages } = useData()
+  const { user, hasUnreadMessages, unreadRoomId, collaborations } = useData()
   const pathname = usePathname()
   const router = useRouter()
   
@@ -33,7 +33,15 @@ export const Navbar = () => {
           {user && (
             <>
               <button
-                onClick={() => router.push('/collaborations')}
+                onClick={() => {
+                  if (unreadRoomId) {
+                    router.push(`/collaborations/${unreadRoomId}`)
+                  } else if (collaborations && collaborations.length > 0) {
+                    router.push(`/collaborations/${collaborations[0].id}`)
+                  } else {
+                    router.push('/collaborations')
+                  }
+                }}
                 className="relative w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center justify-center text-slate-500 group"
               >
                 <MessageSquare size={20} className="group-hover:scale-110 transition-transform" />

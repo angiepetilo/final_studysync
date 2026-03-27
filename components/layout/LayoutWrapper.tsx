@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { DataProvider, useData } from "@/context/DataContext";
 import { PomodoroProvider } from "@/context/PomodoroContext";
@@ -18,10 +18,27 @@ import BottomNav from './BottomNav';
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading } = useData();
+  const router = useRouter();
   
   // Do not show sidebar on landing, auth, or admin pages
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname === '/'
+  const isAuthPage = 
+    pathname.startsWith('/login') || 
+    pathname.startsWith('/register') || 
+    pathname.startsWith('/signup') || 
+    pathname.startsWith('/verify-email') || 
+    pathname.startsWith('/verification-success') || 
+    pathname === '/'
   
+  // Client-side route guard: If no user and trying to access dashboard, go to login
+  useEffect(() => {
+    if (!loading && !user && !isAuthPage) {
+      router.push('/login');
+    }
+    if (!loading && user && isAuthPage) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, isAuthPage, router]);
+
   // Decide whether to show sidebar based on auth state and current path
   const showSidebar = user && !isAuthPage;
 

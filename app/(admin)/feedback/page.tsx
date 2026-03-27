@@ -26,15 +26,25 @@ export default function FeedbackPage() {
     e.preventDefault()
     if (!message.trim() || !user) return
     setSending(true)
-    const { error } = await supabase.from('feedback').insert({
-      user_id: user.id,
-      message: message.trim(),
+    const res = await fetch('/api/admin/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user.id,
+        name: user.full_name || user.email,
+        email: user.email,
+        type: 'General Feedback',
+        message: message.trim()
+      })
     })
-    if (!error) {
+
+    const result = await res.json()
+
+    if (res.ok && result.success) {
       setSent(true)
       setMessage('')
     } else {
-      alert('Error sending feedback: ' + error.message)
+      alert('Error sending feedback: ' + (result.error || 'Request failed'))
     }
     setSending(false)
   }

@@ -27,6 +27,7 @@ export default function RegistrationForm() {
     confirmPassword: ''
   })
   const [loading, setLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof RegistrationFormData, string>>>({})
   const router = useRouter()
 
@@ -65,6 +66,7 @@ export default function RegistrationForm() {
       })
 
       if (result.success) {
+        setRedirecting(true)
         router.push('/verify-email')
       } else {
         setErrors({ email: result.error || 'Registration failed' })
@@ -72,12 +74,22 @@ export default function RegistrationForm() {
     } catch (error) {
       setErrors({ email: 'An unexpected error occurred. Please try again.' })
     } finally {
-      setLoading(false)
+      if (!redirecting) setLoading(false)
     }
   }
 
   return (
-    <div className="w-full max-w-[540px] bg-[#0F172A] rounded-[2.5rem] p-12 shadow-sm border border-slate-800 mt-12 mb-20">
+    <div className="w-full max-w-[540px] bg-[#0F172A] rounded-[2.5rem] p-12 shadow-sm border border-slate-800 mt-12 mb-20 relative overflow-hidden">
+      {redirecting && (
+        <div className="absolute inset-0 bg-[#0F172A]/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fadeIn">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/20">
+            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+          </div>
+          <h3 className="text-xl font-black text-white mb-2">Registration Successful</h3>
+          <p className="text-slate-400 font-bold text-sm">Setting up your profile...</p>
+        </div>
+      )}
+
       <div className="mb-10 text-left">
         <p className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] mb-4">Get Started</p>
         <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">Create Account</h1>
@@ -87,98 +99,119 @@ export default function RegistrationForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Full Name</label>
+            <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.fullName ? 'text-rose-500' : 'text-slate-400'}`}>Full Name</label>
             <div className="relative group">
-              <User size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+              <User size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.fullName ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
               <input
                 type="text"
                 placeholder="Enter your fullname"
                 value={formData.fullName}
                 onChange={(e) => handleInputChange('fullName', e.target.value)}
-                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.fullName ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.fullName ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                 autoComplete="name"
               />
             </div>
-            {errors.fullName && <p className="text-red-500 text-xs mt-2 ml-2">{errors.fullName}</p>}
+            {errors.fullName && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.fullName}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Email Address</label>
+            <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-400'}`}>Email Address</label>
             <div className="relative group">
-              <Mail size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+              <Mail size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.email ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
               <input
                 type="email"
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.email ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.email ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                 autoComplete="email"
               />
             </div>
-            {errors.email && <p className="text-red-500 text-xs mt-2 ml-2">{errors.email}</p>}
+            {errors.email && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Phone Number</label>
+            <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.phone ? 'text-rose-500' : 'text-slate-400'}`}>Phone Number</label>
             <div className="relative group">
-              <Phone size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+              <Phone size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.phone ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
               <input
                 type="tel"
                 placeholder="Enter your phone number"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
-                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.phone ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.phone ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                 autoComplete="tel"
               />
             </div>
-            {errors.phone && <p className="text-red-500 text-xs mt-2 ml-2">{errors.phone}</p>}
+            {errors.phone && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.phone}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Birth Date</label>
+            <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.birthDate ? 'text-rose-500' : 'text-slate-400'}`}>Birth Date</label>
             <div className="relative group">
-              <Calendar size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+              <Calendar size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.birthDate ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
               <input
                 type="date"
                 value={formData.birthDate}
                 onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.birthDate ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.birthDate ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                 autoComplete="bday"
               />
             </div>
-            {errors.birthDate && <p className="text-red-500 text-xs mt-2 ml-2">{errors.birthDate}</p>}
+            {errors.birthDate && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.birthDate}</p>}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div>
-              <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Password</label>
+              <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-400'}`}>Secure Password</label>
               <div className="relative group">
-                <Lock size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                <Lock size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.password ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.password ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                  className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.password ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                   autoComplete="new-password"
                 />
               </div>
-              {errors.password && <p className="text-red-500 text-xs mt-2 ml-2">{errors.password}</p>}
+              
+              {/* Password Requirement Indicator */}
+              <div className="mt-4 p-4 rounded-xl bg-[#030712]/50 border border-slate-800/50 space-y-2">
+                <p className="text-[0.6rem] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Security Standards</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: '8+ Characters', met: formData.password.length >= 8 },
+                    { label: 'Mixed Case', met: /[a-z]/.test(formData.password) && /[A-Z]/.test(formData.password) },
+                    { label: 'Symbol/Digit', met: /[0-9!@#$%^&*(),.?":{}|<>]/.test(formData.password) },
+                    { label: 'Matches', met: formData.password !== '' && formData.password === formData.confirmPassword }
+                  ].map((req, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${req.met ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`} />
+                      <span className={`text-[0.65rem] font-bold tracking-tight transition-colors ${req.met ? 'text-emerald-500/80' : 'text-slate-600'}`}>
+                        {req.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {errors.password && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.password}</p>}
             </div>
+            
             <div>
-              <label className="block text-sm font-bold text-slate-400 mb-3 ml-1">Confirm Password</label>
+              <label className={`block text-sm font-bold mb-3 ml-1 transition-colors ${errors.confirmPassword ? 'text-rose-500' : 'text-slate-400'}`}>Confirm Identity</label>
               <div className="relative group">
-                <CheckCircle2 size={18} className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                <CheckCircle2 size={18} className={`absolute left-5 top-1/2 transform -translate-y-1/2 transition-colors ${errors.confirmPassword ? 'text-rose-500' : 'text-slate-500 group-focus-within:text-indigo-400'}`} />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border ${errors.confirmPassword ? 'border-red-500/50' : 'border-slate-800'} focus:bg-[#030712] focus:border-indigo-500/50 focus:outline-none transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none`}
+                  className={`w-full pl-14 pr-6 py-4 rounded-xl bg-[#030712] border transition-all text-white font-medium placeholder:text-slate-600 shadow-inner focus:shadow-none focus:outline-none ${errors.confirmPassword ? 'border-rose-500/50 bg-rose-500/5' : 'border-slate-800 focus:border-indigo-500/50'}`}
                   autoComplete="new-password"
                 />
               </div>
-              {errors.confirmPassword && <p className="text-red-500 text-xs mt-2 ml-2">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && <p className="text-rose-500 text-[0.65rem] font-black uppercase tracking-widest mt-2 ml-2 animate-shake">{errors.confirmPassword}</p>}
             </div>
           </div>
         </div>
@@ -197,11 +230,11 @@ export default function RegistrationForm() {
 
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || redirecting}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-2xl transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 mt-8 active:scale-[0.98] text-lg"
         >
           {loading ? <span className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3" /> : null}
-          Create My Account
+          {redirecting ? 'Setting up Profile...' : 'Create My Account'}
         </Button>
       </form>
 

@@ -60,18 +60,26 @@ interface ScheduleEntry {
   course_id: string | null
 }
 
+interface Collaboration {
+  id: string
+  title: string
+  last_message_at?: string
+}
+
 interface DataContextType {
   user: UserProfile | null
   tasks: Task[]
   courses: Course[]
   schedules: ScheduleEntry[]
   notes: Note[]
+  collaborations: Collaboration[]
   notifications: Notification[]
   loading: boolean
   refreshData: () => Promise<void>
   profile: { full_name: string, avatar_url: string } | null
   hasUnreadMessages: boolean
   setHasUnreadMessages: (val: boolean) => void
+  unreadRoomId: string | null
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -80,6 +88,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const [hasUnreadMessages, setHasUnreadMessages] = React.useState(false)
+  const [unreadRoomId, setUnreadRoomId] = React.useState<string | null>(null)
+  const [initializing, setInitializing] = React.useState(true)
 
   // 1. Auth Query (Current User)
   const { data: authUser, isLoading: authLoading } = useQuery({
@@ -167,6 +177,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     enabled: !!userId && typeof window !== 'undefined',
   })
 
+  // 8. Collaborations Query
+  const { data: collaborationsData = [], isLoading: collaborationsLoading } = useQuery({
+    queryKey: ['collaborations', userId],
+    queryFn: async () => {
+      if (!userId || typeof window === 'undefined') return []
+      const { data, error } = await supabase
+        .from('collaboration_members')
+        .select('collaborations(*)')
+        .eq('user_id', userId)
+      if (error) throw error
+      return (data.map((item: any) => item.collaborations).filter(Boolean)) as Collaboration[]
+    },
+    enabled: !!userId && typeof window !== 'undefined',
+  })
+
   // 8. Unread Messages Logic
   const checkUnreadMessages = React.useCallback(async () => {
     if (!userId) return
@@ -186,10 +211,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (count && count > 0) {
         setHasUnreadMessages(true)
+        setUnreadRoomId(room.collaboration_id)
         return
       }
     }
     setHasUnreadMessages(false)
+    setUnreadRoomId(null)
   }, [supabase, userId])
 
   useEffect(() => {
@@ -222,6 +249,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }, (payload: any) => {
         if (payload.new.user_id !== userId) {
           setHasUnreadMessages(true)
+          setUnreadRoomId(payload.new.collaboration_id)
+          queryClient.invalidateQueries({ queryKey: ['collaborations', userId] })
         }
       })
       .subscribe()
@@ -247,12 +276,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
     })
 
+    // Set initializing to false after the auth state settles
+    setInitializing(false)
+
     return () => {
       subscription.unsubscribe()
     }
   }, [supabase, queryClient])
 
-  const isInitialLoading = (typeof window === 'undefined') || authLoading || profileLoading || tasksLoading || coursesLoading || notesLoading || notifLoading || schedulesLoading
+  const isInitialLoading = (typeof window === 'undefined') || initializing || authLoading || (userId && (profileLoading || tasksLoading || coursesLoading || notesLoading || notifLoading || schedulesLoading || collaborationsLoading))
 
   // DataContext backward compatibility
   const value = useMemo(() => ({
@@ -266,6 +298,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     courses: coursesData,
     schedules: schedulesData,
     notes: notesData,
+    collaborations: collaborationsData,
     notifications: notifData,
     loading: isInitialLoading,
     refreshData: async () => { await queryClient.invalidateQueries() },
@@ -274,10 +307,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       avatar_url: profileData.avatar_url || ''
     } : null,
     hasUnreadMessages,
-    setHasUnreadMessages
+    setHasUnreadMessages,
+    unreadRoomId
   }), [
-    authUser, profileData, tasksData, coursesData, schedulesData, notesData, notifData, 
-    isInitialLoading, userId, queryClient, hasUnreadMessages
+    authUser, profileData, tasksData, coursesData, schedulesData, notesData, collaborationsData, notifData, 
+    isInitialLoading, userId, queryClient, hasUnreadMessages, unreadRoomId
   ])
 
   return (

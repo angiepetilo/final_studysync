@@ -330,16 +330,7 @@ export async function sendCollaborationMessage(params: {
 
   const supabase = createClient()
   
-  // 1. Verify Auth User ID vs Profile ID (UserId)
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  console.log('--- Send Message Debug ---')
-  console.log('Auth user id:', user?.id)
-  console.log('Profile id being used (params.userId):', userId)
-  
-  if (authError) {
-    console.error('Auth verification error:', authError)
-  }
-
+  const { data: { user } } = await supabase.auth.getUser()
   const effectiveUserId = user?.id || userId
 
   // 2. Insert message with detailed logging
@@ -477,6 +468,8 @@ export async function getCollaborationDetails(collaborationId: string, userId: s
       *,
       collaboration_members(
         user_id,
+        role,
+        last_read_at,
         profiles(full_name, email, avatar_url)
       )
     `)

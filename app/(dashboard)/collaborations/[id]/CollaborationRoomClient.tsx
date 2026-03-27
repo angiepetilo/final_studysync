@@ -145,6 +145,7 @@ interface Collaboration {
       email: string
       avatar_url?: string
     }
+    last_read_at?: string
   }>
 }
 
@@ -317,7 +318,7 @@ export default function CollaborationRoomClient({
     }
 
     updateReadStatus()
-  }, [collaboration.id, userProfile.id, supabase, setHasUnreadMessages])
+  }, [collaboration.id, userProfile.id, supabase, setHasUnreadMessages, messages])
 
   const broadcastTyping = () => {
     if (!channelRef.current) return
@@ -355,6 +356,8 @@ export default function CollaborationRoomClient({
 
       if (success) {
         setNewMessage('')
+        // Immediately invalidate to show the new message for the sender
+        queryClient.invalidateQueries({ queryKey: ['messages', collaboration.id] })
       } else {
         toast.error(error === 'Failed to fetch' 
           ? 'Connection lost. Check your internet connection.' 
@@ -602,6 +605,18 @@ export default function CollaborationRoomClient({
                     {isOwn && (
                       <div className="flex items-center gap-3 px-1">
                         <span className="text-[0.6rem] font-bold text-slate-300 dark:text-slate-700">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="flex items-center gap-1 group/status">
+                          {/* Seen Logic */}
+                          {members.some((m: any) => m.user_id !== userProfile.id && m.last_read_at && new Date(m.last_read_at) >= new Date(msg.created_at)) ? (
+                            <span className="text-[0.6rem] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1">
+                              Seen <CheckCircle size={10} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="text-[0.6rem] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest">
+                              Sent
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[0.7rem] font-black text-slate-900 dark:text-white uppercase tracking-widest">You</span>
                       </div>
                     )}

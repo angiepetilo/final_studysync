@@ -60,19 +60,26 @@ function LandingPageContent() {
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
-    
-    const { error } = await supabase.from('feedback').insert({
-      user_id: user?.id || null,
-      message: `[${feedback.type}] From ${feedback.name} (${feedback.email}): ${feedback.message}`,
+    const res = await fetch('/api/admin/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user?.id || null,
+        name: feedback.name,
+        email: feedback.email,
+        type: feedback.type,
+        message: feedback.message
+      })
     })
 
-    if (!error) {
+    const result = await res.json()
+
+    if (res.ok && result.success) {
       setSubmitted(true)
       setFeedback({ name: '', email: '', type: 'Suggestion', message: '' })
       setTimeout(() => setSubmitted(false), 5000)
     } else {
-      alert('Error sending feedback: ' + error.message)
+      alert('Error sending feedback: ' + (result.error || 'Request failed'))
     }
     setSubmitting(false)
   }

@@ -108,3 +108,45 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
+// POST: Public endpoint to submit feedback (bypasses RLS via service role)
+export async function POST(request: Request) {
+  try {
+    const { user_id, name, email, type, message } = await request.json()
+    
+    let effectiveUserId = user_id
+    
+    // If guest and table requires non-null user_id, find a fallback
+    if (!effectiveUserId) {
+      const { data: fallbackUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .single()
+      
+      if (fallbackUser) {
+        effectiveUserId = fallbackUser.id
+      }
+    }
+
+    // Construct a rich message for the admin
+    const richMessage = `[${type || 'General'}] From ${name || 'Anonymous'} (${email || 'No Email'}): ${message}`
+
+    const { data, error } = await supabase
+      .from('feedback')
+      .insert({
+        user_id: effectiveUserId,
+        message: richMessage,
+        status: 'new'
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Feedback submission error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}

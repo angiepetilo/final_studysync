@@ -48,9 +48,9 @@ export function createClient() {
         flowType: 'pkce',
         storage: typeof window !== 'undefined' 
           ? {
-              getItem: (key: string) => sessionStorage.getItem(key),
-              setItem: (key: string, value: string) => sessionStorage.setItem(key, value),
-              removeItem: (key: string) => sessionStorage.removeItem(key),
+              getItem: (key: string) => localStorage.getItem(key),
+              setItem: (key: string, value: string) => localStorage.setItem(key, value),
+              removeItem: (key: string) => localStorage.removeItem(key),
             }
           : undefined
       },
