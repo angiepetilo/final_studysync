@@ -4,7 +4,29 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { CheckCircle2, Users, LayoutGrid, ArrowRight, Zap, Globe, Shield } from 'lucide-react'
 
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
+
 export default function LandingPage() {
+  const [user, setUser] = useState<any>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Check locally first
+    const localAdmin = localStorage.getItem('admin_session')
+    if (localAdmin) {
+      setIsAdmin(true)
+      return
+    }
+
+    supabase.auth.getUser().then(({ data }: { data: any }) => {
+      if (data?.user) {
+        setUser(data.user)
+      }
+    })
+  }, [])
+
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 overflow-x-hidden">
 
@@ -28,11 +50,21 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-              Log In
-            </Link>
+            {isAdmin ? (
+              <Link href="/admin/dashboard" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+                Admin Dashboard
+              </Link>
+            ) : user ? (
+              <Link href="/dashboard" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+                Log In
+              </Link>
+            )}
             <Link href="/register" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-200 hover:translate-y-[-1px] active:translate-y-[1px]">
-              Get Started
+              {user || isAdmin ? 'Enter Workspace' : 'Get Started'}
             </Link>
           </div>
         </div>

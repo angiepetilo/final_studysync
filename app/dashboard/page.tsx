@@ -90,16 +90,7 @@ export default function DashboardPage() {
     <div className="flex-1 min-h-screen bg-[#F8FAFC] text-slate-900 font-sans p-10 overflow-y-auto selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between mb-16 gap-8">
-        <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search resources, notes, or groups..." 
-            className="w-full bg-white border border-slate-100 rounded-2xl py-4 pl-14 pr-6 text-sm text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm placeholder:text-slate-300 font-medium"
-          />
-        </div>
-
+      <div className="flex items-center justify-end mb-16 gap-8">
         <div className="flex items-center gap-4">
           <NotificationBell userId={profile?.id || ''} className="w-12 h-12 rounded-2xl bg-white border border-slate-100" iconSize={20} />
           <UserNav user={{ id: profile?.id || '', email: profile?.email || '', full_name: profile?.full_name || '' }} />

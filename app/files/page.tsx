@@ -3,9 +3,14 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import Modal from '@/components/Modal'
 import { format } from 'date-fns'
-import { FolderOpen, Upload, Download, Trash2, FileText, Image, Archive, Table, File, Plus, ChevronRight, FolderPlus, ArrowLeft, Folder } from 'lucide-react'
+import { 
+  Upload, Trash2, FileText, Image as ImageIcon, Archive, 
+  Filter, ChevronDown, List, Download,
+  Table, ShieldCheck, PieChart, Search, File as LucideFile
+} from 'lucide-react'
+import NotificationBell from '@/components/NotificationBell'
+import UserNav from '@/components/UserNav'
 
 interface FileEntry {
   id: string
@@ -16,13 +21,6 @@ interface FileEntry {
   description: string
   course_id: string | null
   folder_id: string | null
-  created_at: string
-}
-
-interface FolderEntry {
-  id: string
-  name: string
-  parent_id: string | null
   created_at: string
 }
 
@@ -39,73 +37,55 @@ function formatSize(bytes: number): string {
 }
 
 function getFileIcon(mime: string) {
-  if (mime?.includes('pdf')) return { icon: FileText, color: '#ef4444' }
-  if (mime?.includes('image')) return { icon: Image, color: '#8b5cf6' }
-  if (mime?.includes('zip') || mime?.includes('rar') || mime?.includes('archive')) return { icon: Archive, color: '#f59e0b' }
-  if (mime?.includes('spreadsheet') || mime?.includes('excel') || mime?.includes('csv')) return { icon: Table, color: '#10b981' }
-  return { icon: File, color: 'var(--muted)' }
+  if (mime?.includes('pdf')) return { icon: FileText, bg: 'bg-red-50', text: 'text-red-500' }
+  if (mime?.includes('image')) return { icon: ImageIcon, bg: 'bg-indigo-50', text: 'text-indigo-600' }
+  if (mime?.includes('zip') || mime?.includes('rar') || mime?.includes('archive')) return { icon: Archive, bg: 'bg-amber-50', text: 'text-amber-500' }
+  if (mime?.includes('spreadsheet') || mime?.includes('excel') || mime?.includes('csv')) return { icon: Table, bg: 'bg-emerald-50', text: 'text-emerald-500' }
+  if (mime?.includes('word') || mime?.includes('document') || mime?.includes('docx')) return { icon: FileText, bg: 'bg-blue-50', text: 'text-blue-500' }
+  return { icon: File, bg: 'bg-slate-50', text: 'text-slate-500' }
 }
 
 export default function FilesPage() {
   const supabase = createClient()
   const [files, setFiles] = useState<FileEntry[]>([])
-  const [folders, setFolders] = useState<FolderEntry[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, email: string }>({ id: '', full_name: '', email: '' })
+  
   const [uploading, setUploading] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [uploadForm, setUploadForm] = useState({ description: '', course_id: '' })
-  const [showUploadForm, setShowUploadForm] = useState(false)
+  
+  const [uploadForm, setUploadForm] = useState({ title: '', course_id: '' })
   const [selectedFile, setSelectedFile] = useState<globalThis.File | null>(null)
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
-  const [folderPath, setFolderPath] = useState<FolderEntry[]>([])
-  const [newFolderName, setNewFolderName] = useState('')
-  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const [filesRes, coursesRes, foldersRes] = await Promise.all([
+    
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+    setUserProfile({ id: user.id, full_name: profile?.full_name || '', email: user.email || '' })
+
+    const [filesRes, coursesRes] = await Promise.all([
       supabase.from('files').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('courses').select('id, title, color').eq('user_id', user.id),
-      supabase.from('folders').select('*').eq('user_id', user.id).order('name', { ascending: true }),
     ])
     setFiles(filesRes.data || [])
     setCourses(coursesRes.data || [])
-    setFolders(foldersRes.data || [])
     setLoading(false)
   }
 
   useEffect(() => { fetchData() }, [supabase])
 
-  // Build breadcrumb path
-  useEffect(() => {
-    if (!currentFolderId) {
-      setFolderPath([])
-      return
-    }
-    const buildPath = (folderId: string): FolderEntry[] => {
-      const folder = folders.find(f => f.id === folderId)
-      if (!folder) return []
-      if (folder.parent_id) return [...buildPath(folder.parent_id), folder]
-      return [folder]
-    }
-    setFolderPath(buildPath(currentFolderId))
-  }, [currentFolderId, folders])
-
-  const currentFolders = folders.filter(f => f.parent_id === currentFolderId)
-  const currentFiles = files.filter(f => f.folder_id === currentFolderId)
-
   const handleFileSelect = (file: globalThis.File) => {
-    if (file.size > 20 * 1024 * 1024) {
-      alert('File size must be under 20MB')
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File size must be under 50MB')
       return
     }
     setSelectedFile(file)
-    setShowUploadForm(true)
   }
 
   const handleUpload = async () => {
@@ -129,29 +109,14 @@ export default function FilesPage() {
       storage_path: filePath,
       size: selectedFile.size,
       mime_type: selectedFile.type,
-      description: uploadForm.description || null,
+      description: uploadForm.title || selectedFile.name,
       course_id: uploadForm.course_id || null,
-      folder_id: currentFolderId,
+      folder_id: null,
     })
 
     setUploading(false)
-    setShowUploadForm(false)
     setSelectedFile(null)
-    setUploadForm({ description: '', course_id: '' })
-    fetchData()
-  }
-
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('folders').insert({
-      user_id: user.id,
-      name: newFolderName.trim(),
-      parent_id: currentFolderId,
-    })
-    setNewFolderName('')
-    setShowNewFolder(false)
+    setUploadForm({ title: '', course_id: '' })
     fetchData()
   }
 
@@ -173,186 +138,232 @@ export default function FilesPage() {
     fetchData()
   }
 
-  const handleDeleteFolder = async () => {
-    if (!deleteFolderId) return
-    await supabase.from('folders').delete().eq('id', deleteFolderId)
-    setDeleteFolderId(null)
-    fetchData()
-  }
-
   const getCourse = (id: string | null) => courses.find(c => c.id === id)
 
-  if (loading) return <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div className="spinner" style={{ width: 32, height: 32 }} /></div>
+  const displayFiles = files.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    f.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const totalStorageUsedB = files.reduce((acc, f) => acc + f.size, 0)
+  const storageLimitB = 5 * 1024 * 1024 * 1024 // 5GB limit as in mockup
+  
+  if (loading) {
+    return (
+      <div className="flex-1 min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    )
+  }
 
   return (
-    <div className="page-container animate-fadeIn">
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h1 className="page-title">File Vault</h1>
-          <p className="page-subtitle">{files.length} file{files.length !== 1 ? 's' : ''} · {folders.length} folder{folders.length !== 1 ? 's' : ''}</p>
+    <div className="flex-1 min-h-screen bg-[#FAFBFF] p-8 lg:p-12 animate-fadeIn">
+      {/* Top Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 mb-12">
+        <h1 className="text-[1.75rem] font-black text-slate-900 tracking-tight shrink-0">File Vault</h1>
+        
+        <div className="flex items-center gap-4 shrink-0 ml-auto leading-none">
+          <NotificationBell userId={userProfile.id} className="w-12 h-12 rounded-2xl bg-white border border-slate-100" iconSize={20} />
+          <UserNav user={userProfile} />
         </div>
-        <button className="btn btn-primary" onClick={() => setShowNewFolder(true)}>
-          <FolderPlus size={16} /> New Folder
-        </button>
       </div>
 
-      {/* Breadcrumb Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setCurrentFolderId(null)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: currentFolderId ? 500 : 700, color: currentFolderId ? 'var(--accent)' : 'var(--foreground)', padding: 0 }}
-        >
-          My Files
-        </button>
-        {folderPath.map((f) => (
-          <span key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ChevronRight size={14} color="var(--muted)" />
-            <button
-              onClick={() => setCurrentFolderId(f.id)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: f.id === currentFolderId ? 700 : 500, color: f.id === currentFolderId ? 'var(--foreground)' : 'var(--accent)', padding: 0 }}
-            >
-              {f.name}
-            </button>
-          </span>
-        ))}
-      </div>
-
-      {/* New Folder Form */}
-      {showNewFolder && (
-        <div className="card animate-slideInUp" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <FolderPlus size={20} color="var(--accent)" />
-          <input
-            className="input"
-            placeholder="Folder name..."
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-            autoFocus
-            style={{ flex: 1 }}
-          />
-          <button className="btn btn-primary" onClick={handleCreateFolder} disabled={!newFolderName.trim()}>Create</button>
-          <button className="btn btn-secondary" onClick={() => { setShowNewFolder(false); setNewFolderName('') }}>Cancel</button>
-        </div>
-      )}
-
-      {/* Drop Zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f) }}
-        onClick={() => fileInputRef.current?.click()}
-        className="card"
-        style={{
-          textAlign: 'center', padding: '2rem 2rem', marginBottom: '1.5rem', cursor: 'pointer',
-          border: dragOver ? '2px dashed var(--accent)' : '2px dashed var(--border)',
-          background: dragOver ? 'var(--accent-bg)' : 'var(--card)',
-          transition: 'all 0.2s',
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          style={{ display: 'none' }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
-        />
-        <Upload size={28} color={dragOver ? 'var(--accent)' : 'var(--muted)'} style={{ margin: '0 auto 0.5rem' }} />
-        <p style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}>Drag & drop a file here, or click to browse</p>
-        <p style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Maximum file size: 20MB</p>
-      </div>
-
-      {/* Upload Form Panel */}
-      {showUploadForm && selectedFile && (
-        <div className="card animate-slideInUp" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label className="label">File</label>
-            <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{selectedFile.name} ({formatSize(selectedFile.size)})</div>
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label className="label">Description</label>
-            <input className="input" placeholder="Add a memo..." value={uploadForm.description} onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })} />
-          </div>
-          <div style={{ minWidth: 160 }}>
-            <label className="label">Course</label>
-            <select className="input" value={uploadForm.course_id} onChange={(e) => setUploadForm({ ...uploadForm, course_id: e.target.value })}>
-              <option value="">None</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-          <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-            {uploading ? <span className="spinner" /> : <><Upload size={16} /> Upload</>}
-          </button>
-          <button className="btn btn-secondary" onClick={() => { setShowUploadForm(false); setSelectedFile(null) }}>Cancel</button>
-        </div>
-      )}
-
-      {/* Folders */}
-      {currentFolders.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }} className="stagger-children">
-          {currentFolders.map(folder => (
-            <div
-              key={folder.id}
-              className="card"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', cursor: 'pointer', position: 'relative' }}
-              onClick={() => setCurrentFolderId(folder.id)}
-            >
-              <div style={{ width: 36, height: 36, borderRadius: '0.75rem', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Folder size={18} color="var(--accent)" />
+      {/* Two Column Layout */}
+      <div className="flex flex-col xl:flex-row gap-10 items-start">
+        
+        {/* Left Column - Upload Form */}
+        <div className="w-full xl:w-[380px] shrink-0 flex flex-col gap-6">
+          
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-[0_4px_30px_rgb(0,0,0,0.03)] border border-slate-50">
+            <h2 className="text-[1.5rem] font-black text-slate-900 leading-tight mb-8 pr-12 tracking-tight">
+              Upload New<br/>Resource
+            </h2>
+            
+            <div className="space-y-7">
+              <div>
+                <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2.5 block px-1">Resource Title</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Advanced Calculus"
+                  value={uploadForm.title}
+                  onChange={e => setUploadForm({...uploadForm, title: e.target.value})}
+                  className="w-full bg-[#F5F6FC] border-none rounded-full px-5 py-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                />
               </div>
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{folder.name}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
-                  {files.filter(f => f.folder_id === folder.id).length} files
+              
+              <div>
+                <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2.5 block px-1">Course Assignment</label>
+                <div className="relative">
+                  <select 
+                    value={uploadForm.course_id}
+                    onChange={e => setUploadForm({...uploadForm, course_id: e.target.value})}
+                    className="w-full bg-[#F5F6FC] border-none rounded-full px-5 py-3.5 text-sm font-bold text-slate-700 outline-none appearance-none pr-12 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                  >
+                    <option value="">Select a course</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setDeleteFolderId(folder.id) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--muted)', opacity: 0.5 }}
+              
+              <div>
+                <label className="text-[0.65rem] font-black text-slate-500 uppercase tracking-widest mb-2.5 block px-1">File Dropzone</label>
+                
+                <div 
+                  className={`border-2 border-dashed rounded-[2rem] px-6 py-10 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative overflow-hidden
+                    ${dragOver ? 'border-indigo-400 bg-indigo-50/50' : 'border-slate-200 bg-[#FAFBFF] hover:bg-slate-50'}`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) handleFileSelect(f);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div className="w-12 h-12 bg-[#EEF2FF] text-indigo-600 rounded-full flex items-center justify-center mb-5 shrink-0">
+                    <Upload size={20} className="stroke-[2.5]" />
+                  </div>
+                  
+                  {selectedFile ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{selectedFile.name}</p>
+                      <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest">{formatSize(selectedFile.size)}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[0.85rem] font-bold text-slate-900 mb-2.5 leading-snug">
+                        Drag & drop or <br/><span className="text-indigo-600 underline decoration-indigo-200 underline-offset-4">browse</span>
+                      </p>
+                      <p className="text-[0.65rem] font-bold text-slate-400 leading-[1.6] max-w-[160px]">
+                        Supports PDF, JPG,<br/>DOCX (Max 50MB)
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <button 
+                onClick={handleUpload}
+                disabled={!selectedFile || uploading}
+                className={`w-full py-4 rounded-full flex items-center justify-center gap-2.5 text-sm font-bold transition-all
+                  ${!selectedFile || uploading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#4338CA] hover:bg-[#3730A3] text-white shadow-[0_8px_20px_rgb(67,56,202,0.25)] hover:shadow-[0_12px_25px_rgb(67,56,202,0.3)] hover:-translate-y-0.5'}`}
               >
-                <Trash2 size={14} />
+                {uploading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <ShieldCheck size={18} className="stroke-[2.5]" />
+                    Secure Upload
+                  </>
+                )}
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
 
-      {/* File List */}
-      {currentFiles.length === 0 && currentFolders.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-          <FolderOpen size={48} color="var(--border)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{currentFolderId ? 'This folder is empty' : 'No files yet'}</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Upload files using the drop zone above{currentFolderId ? '' : ' or create a folder'}.</p>
+          {/* Storage Card */}
+          <div className="bg-[#F3F4FB] rounded-full px-8 py-5 flex items-center justify-between border border-slate-100">
+            <div className="space-y-0.5">
+              <h4 className="text-[0.6rem] font-black text-indigo-600 uppercase tracking-widest">Vault Storage</h4>
+              <p className="text-[0.85rem] font-black text-slate-900">
+                {formatSize(totalStorageUsedB)} of 5 GB used
+              </p>
+            </div>
+            <div className="w-10 h-10 bg-indigo-100/50 text-indigo-600 rounded-full flex items-center justify-center shrink-0">
+              <PieChart size={18} className="stroke-[2.5]" />
+            </div>
+          </div>
+          
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} className="stagger-children">
-          {currentFiles.map(file => {
-            const { icon: FileIcon, color: iconColor } = getFileIcon(file.mime_type)
-            const course = getCourse(file.course_id)
-            return (
-              <div key={file.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.5rem' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '0.75rem', background: `${iconColor}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <FileIcon size={20} color={iconColor} />
-                </div>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</div>
-                  <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.125rem' }}>
-                    <span>{formatSize(file.size)}</span>
-                    <span>{format(new Date(file.created_at), 'MMM d, yyyy')}</span>
-                    {file.description && <span>· {file.description}</span>}
+
+        {/* Right Column - File Library */}
+        <div className="flex-1 flex flex-col min-w-0 w-full xl:pl-4">
+          
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-[1.75rem] font-black text-slate-900 tracking-tight">File Library</h2>
+            
+            <div className="flex items-center gap-2.5">
+              <button className="w-10 h-10 bg-slate-100/80 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                <List size={18} className="stroke-[2.5]" />
+              </button>
+              <button className="w-10 h-10 bg-slate-100/80 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                <Filter size={18} className="stroke-[2.5]" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 pb-12 items-start auto-rows-max">
+            {displayFiles.map((file) => {
+              const { icon: FileIcon, bg, text } = getFileIcon(file.mime_type)
+              const course = getCourse(file.course_id)
+              
+              return (
+                <div 
+                  key={file.id} 
+                  onClick={() => handleDownload(file)}
+                  className="bg-white rounded-[2rem] p-7 shadow-[0_4px_25px_rgb(0,0,0,0.02)] border border-slate-50/50 flex flex-col justify-between h-[180px] group cursor-pointer hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all relative overflow-hidden"
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${bg} ${text} shrink-0`}>
+                    <LucideFile size={20} className="stroke-[2.5]" />
+                  </div>
+                  
+                  <h3 className="text-lg font-black text-slate-900 truncate mt-auto mb-3" title={file.description || file.name}>
+                    {file.description || file.name}
+                  </h3>
+                  
+                  <div className="flex items-center justify-between shrink-0">
+                    {course ? (
+                      <div className="bg-[#F5F6FC] text-slate-600 px-3.5 py-1.5 rounded-full text-[0.65rem] font-black uppercase tracking-widest truncate max-w-[65%]">
+                        {course.title}
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 text-slate-400 px-3.5 py-1.5 rounded-full text-[0.65rem] font-black uppercase tracking-widest truncate max-w-[65%] border border-slate-100/50">
+                        Untagged
+                      </div>
+                    )}
+                    
+                    <div className="text-slate-400 text-[0.7rem] font-bold uppercase tracking-wider">
+                      {formatSize(file.size)}
+                    </div>
+                  </div>
+
+                  <div className="absolute top-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                      className="w-8 h-8 rounded-full bg-slate-50 text-indigo-500 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                      title="Download File"
+                    >
+                      <Download size={14} className="stroke-[2.5]" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(file.id); }}
+                      className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                      title="Delete File"
+                    >
+                      <Trash2 size={14} className="stroke-[2.5]" />
+                    </button>
                   </div>
                 </div>
-                {course && <span className="badge" style={{ background: `${course.color}15`, color: course.color }}>{course.title}</span>}
-                <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-                  <button onClick={() => handleDownload(file)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.375rem', borderRadius: '0.5rem', color: 'var(--accent)' }}><Download size={16} /></button>
-                  <button onClick={() => setDeleteId(file.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.375rem', borderRadius: '0.5rem', color: 'var(--muted)' }}><Trash2 size={15} /></button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
 
+            {displayFiles.length === 0 && (
+              <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-slate-300 mb-6 shadow-sm border border-slate-50">
+                  <Search size={36} className="stroke-[2]" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-2">No files found</h3>
+                <p className="text-sm font-semibold text-slate-400">Upload documents or adjust your search.</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+      
       <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="Delete File" message="This file will be permanently deleted from storage." />
-      <ConfirmDialog isOpen={!!deleteFolderId} onClose={() => setDeleteFolderId(null)} onConfirm={handleDeleteFolder} title="Delete Folder" message="This folder and all files inside it will be deleted." />
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }} />
     </div>
   )
 }

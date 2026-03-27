@@ -16,12 +16,12 @@ export default function VerifyEmailPage() {
         <h1 className="text-3xl font-bold text-white mb-4">Check your email</h1>
         
         <p className="text-slate-400 text-[15px] leading-relaxed mb-8">
-          We've sent a verification link to your email address. Please check your inbox and click the link to activate your StudSync account.
+          We&apos;ve sent a verification link to your email address. Please check your inbox and click the link to activate your StudSync account.
         </p>
 
         <div className="bg-[#182133] border border-white/5 rounded-xl p-4 mb-8">
           <p className="text-xs text-slate-500 font-medium">
-            Don't see it? Check your spam folder or wait a few minutes before requesting another link.
+            Don&apos;t see it? Check your spam folder or wait a few minutes before requesting another link.
           </p>
         </div>
 
