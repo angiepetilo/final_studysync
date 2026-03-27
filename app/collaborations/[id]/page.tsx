@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { ArrowLeft, Send, Users, User, Lock, Globe, UserPlus, Paperclip, Plus, FileText, CheckCircle2, File, ChevronRight, Check } from 'lucide-react'
 import ShareAssetModal from '@/components/ShareAssetModal'
+import NotificationBell from '@/components/NotificationBell'
+import UserNav from '@/components/UserNav'
 
 interface Message {
   id: string
@@ -44,6 +46,7 @@ export default function CollaborationRoomPage() {
   const [newMessage, setNewMessage] = useState('')
   const [userId, setUserId] = useState('')
   const [userName, setUserName] = useState('')
+  const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, email: string }>({ id: '', full_name: '', email: '' })
   const [loading, setLoading] = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
@@ -58,6 +61,7 @@ export default function CollaborationRoomPage() {
 
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
       setUserName(profile?.full_name || user.email || 'Unknown')
+      setUserProfile({ id: user.id, full_name: profile?.full_name || '', email: user.email || '' })
 
       const [roomRes, membersRes, messagesRes] = await Promise.all([
         supabase.from('collaborations').select('*').eq('id', roomId).single(),
@@ -202,10 +206,10 @@ export default function CollaborationRoomPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-             <div className="flex -space-x-3 mr-2">
+          <div className="flex items-center gap-4">
+             <div className="flex -space-x-3 mr-2 hidden md:flex">
                 {members.slice(0, 3).map(m => (
-                  <div key={m.id} className="w-9 h-9 rounded-xl border-4 border-white bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 shadow-sm overflow-hidden">
+                  <div key={m.id} title={m.profiles?.full_name || 'Member'} className="w-9 h-9 rounded-xl border-4 border-white bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 shadow-sm overflow-hidden">
                     {m.profiles?.full_name?.charAt(0) || 'U'}
                   </div>
                 ))}
@@ -215,6 +219,9 @@ export default function CollaborationRoomPage() {
                   </div>
                 )}
              </div>
+             
+             <NotificationBell userId={userProfile.id} className="w-10 h-10 rounded-xl bg-white border border-slate-100 hidden sm:flex" iconSize={18} />
+             <UserNav user={userProfile} />
           </div>
         </div>
 

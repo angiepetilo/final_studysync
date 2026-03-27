@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(
     (route) => request.nextUrl.pathname === route
   )
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/api/admin')
   const hasLocalAdminSession = request.cookies.has('admin_session')
 
   // If Supabase is not configured, allow public routes and block private ones
@@ -53,12 +53,6 @@ export async function middleware(request: NextRequest) {
 
   // Allow local admin session to bypass Supabase auth for admin routes
   if (!user && isAdminRoute && hasLocalAdminSession) {
-    // If they are on the login page (or trying to reach it), redirect to dashboard
-    if (request.nextUrl.pathname === '/admin/login') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/dashboard'
-      return NextResponse.redirect(url)
-    }
     return NextResponse.next()
   }
 
@@ -66,20 +60,6 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = isAdminRoute ? '/admin/login' : '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // If user is signed in and trying to access login/register, redirect to dashboard
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
-  // If user is signed in and trying to access admin login, redirect to admin dashboard
-  if (user && request.nextUrl.pathname === '/admin/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/admin/dashboard'
     return NextResponse.redirect(url)
   }
 

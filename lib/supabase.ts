@@ -71,7 +71,14 @@ export function createClient() {
   }
 
   if (!client) {
-    client = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+      },
+    })
   }
   return client
 }

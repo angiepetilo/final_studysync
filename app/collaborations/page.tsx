@@ -6,6 +6,8 @@ import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import Link from 'next/link'
 import { Users, Plus, Trash2, Lock, Globe, ArrowRight, User } from 'lucide-react'
+import NotificationBell from '@/components/NotificationBell'
+import UserNav from '@/components/UserNav'
 
 interface Collaboration {
   id: string
@@ -25,18 +27,22 @@ export default function CollaborationsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [userId, setUserId] = useState('')
+  const [userProfile, setUserProfile] = useState<{ id: string, full_name: string, email: string }>({ id: '', full_name: '', email: '' })
   const [form, setForm] = useState({ title: '', description: '', visibility: 'private' })
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
+    
+    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+    setUserProfile({ id: user.id, full_name: profile?.full_name || '', email: user.email || '' })
 
     const { data: collabs } = await supabase.from('collaborations').select('*').order('created_at', { ascending: false })
 
     if (collabs) {
       const enriched = await Promise.all(
-        collabs.map(async (collab) => {
+        collabs.map(async (collab: any) => {
           const { count } = await supabase.from('collaboration_members').select('*', { count: 'exact', head: true }).eq('collaboration_id', collab.id)
           return { ...collab, member_count: count || 0 }
         })
@@ -85,12 +91,19 @@ export default function CollaborationsPage() {
 
   return (
     <div className="page-container animate-fadeIn">
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="page-header flex items-center justify-between mb-8">
         <div>
-          <h1 className="page-title">Collaborations</h1>
-          <p className="page-subtitle">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</p>
+          <h1 className="page-title text-2xl font-black text-slate-900">Collaborations</h1>
+          <p className="page-subtitle text-slate-500 font-bold">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setModalOpen(true)}><Plus size={18} /> Create Room</button>
+        <div className="flex items-center gap-4">
+          <button className="btn btn-primary px-4 py-2 bg-indigo-600 text-white rounded-xl shadow-md font-bold hover:bg-indigo-700 transition flex items-center gap-2" onClick={() => setModalOpen(true)}>
+            <Plus size={18} /> Create Room
+          </button>
+          
+          <NotificationBell userId={userProfile.id} className="w-12 h-12 rounded-2xl bg-white border border-slate-100" iconSize={20} />
+          <UserNav user={userProfile} />
+        </div>
       </div>
 
       {rooms.length === 0 ? (

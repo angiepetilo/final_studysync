@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -18,6 +18,16 @@ export default function AdminLoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    // Force sign out when landing on login page
+    const clearSession = async () => {
+      document.cookie = 'admin_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      localStorage.removeItem('admin_session')
+      await supabase.auth.signOut()
+    }
+    clearSession()
+  }, [supabase.auth])
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -25,7 +35,7 @@ export default function AdminLoginPage() {
 
     // Check default admin credentials first
     if (email === DEFAULT_ADMIN_EMAIL && password === DEFAULT_ADMIN_PASSWORD) {
-      document.cookie = 'admin_session=true; path=/; max-age=86400' // 1 day
+      document.cookie = 'admin_session=true; path=/;' // Session cookie instead of 1 day
       localStorage.setItem('admin_session', JSON.stringify({
         email: DEFAULT_ADMIN_EMAIL,
         full_name: 'System Administrator',
