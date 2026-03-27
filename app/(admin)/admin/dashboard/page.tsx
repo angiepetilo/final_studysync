@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -58,21 +58,21 @@ export default function AdminDashboardPage() {
     </div>
   )
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/stats')
       const data = await res.json()
       setStats(data)
     } catch { /* stats fail silently */ }
-  }
+  }, [setStats]) // Dependency on setStats
 
-  const fetchFeedback = async () => {
+  const fetchFeedback = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/feedback')
       const data = await res.json()
       if (Array.isArray(data)) setRecentFeedback(data.slice(0, 3))
     } catch { /* feedback fail silently */ }
-  }
+  }, [setRecentFeedback]) // Dependency on setRecentFeedback
 
   useEffect(() => {
     const handleResize = () => {
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
       setLoading(false)
     }
     fetchAdmin()
-  }, [])
+  }, [fetchStats, fetchFeedback, supabase.auth, profile])
 
 
   const statusStyle: Record<string, { bg: string; text: string; label: string }> = {

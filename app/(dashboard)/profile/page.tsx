@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { useData } from '@/context/DataContext'
 import { 
@@ -98,10 +99,13 @@ export default function ProfilePage() {
             <Card className="p-10 flex flex-col items-center text-center border border-slate-100 dark:border-slate-800 shadow-sm">
               <div className="relative group mb-8">
                 <div className="w-44 h-44 rounded-[2.5rem] bg-slate-50 dark:bg-slate-900 border-8 border-white dark:border-slate-800 shadow-2xl overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
-                  <img 
+                  <Image 
                     src={form.avatar_url || `https://ui-avatars.com/api/?name=${form.full_name}&background=6366f1&color=fff&size=200`} 
                     alt="Avatar" 
+                    width={176}
+                    height={176}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 </div>
                 <button className="absolute -bottom-2 -right-2 w-12 h-12 rounded-2xl bg-indigo-600 border-4 border-white dark:border-slate-800 shadow-xl flex items-center justify-center text-white hover:scale-110 transition-transform">

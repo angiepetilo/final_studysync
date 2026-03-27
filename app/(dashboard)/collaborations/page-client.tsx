@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import Modal from '@/components/shared/Modal'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
@@ -32,7 +32,7 @@ export default function CollaborationsPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', visibility: 'private' })
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     if (!user) return
     const { data: collabs } = await supabase.from('collaborations').select('*').order('created_at', { ascending: false })
 
@@ -46,7 +46,7 @@ export default function CollaborationsPage() {
       setRooms(enriched)
     }
     setLoading(false)
-  }
+  }, [user, supabase, setRooms, setLoading])
 
   useEffect(() => {
     if (!contextLoading && user) {
@@ -54,7 +54,7 @@ export default function CollaborationsPage() {
     } else if (!contextLoading && !user) {
       setLoading(false)
     }
-  }, [user, contextLoading, supabase])
+  }, [user, contextLoading, fetchRooms])
 
   const handleCreate = async () => {
     setSaving(true)

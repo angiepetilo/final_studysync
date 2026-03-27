@@ -2,6 +2,13 @@
 const nextConfig = {
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'zjvuwmasrkwqtvztghwz.supabase.co',
+        pathname: '/storage/v1/object/**',
+      }
+    ]
   },
   eslint: {
     ignoreDuringBuilds: false,

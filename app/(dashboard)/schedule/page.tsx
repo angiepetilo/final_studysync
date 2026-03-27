@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { format } from 'date-fns'
@@ -61,12 +61,12 @@ export default function SchedulePage() {
   const courses = globalCourses
   const today = new Date()
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = useCallback(async () => {
     if (!user) return
     const { data: schedRes } = await supabase.from('schedules').select('*').eq('user_id', user.id).order('event_date').order('start_time')
     setEntries(schedRes || [])
     setLoading(false)
-  }
+  }, [user, supabase, setEntries, setLoading])
 
   useEffect(() => {
     if (!contextLoading && user) {
@@ -74,7 +74,7 @@ export default function SchedulePage() {
     } else if (!contextLoading && !user) {
       setLoading(false)
     }
-  }, [user, contextLoading])
+  }, [user, contextLoading, fetchSchedule])
 
   const handleSave = async () => {
     setSaving(true)

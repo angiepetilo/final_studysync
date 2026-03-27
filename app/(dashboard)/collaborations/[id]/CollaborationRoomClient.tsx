@@ -1,4 +1,5 @@
 'use client'
+import NextImage from 'next/image'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -576,7 +577,14 @@ export default function CollaborationRoomClient({
                   {!isOwn && (
                     <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center font-black relative overflow-hidden bg-slate-100 dark:bg-slate-800 text-slate-400">
                       {msg.profiles?.avatar_url ? (
-                        <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                        <NextImage 
+                          src={msg.profiles.avatar_url} 
+                          alt="" 
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover" 
+                          unoptimized
+                        />
                       ) : (
                         msg.profiles?.full_name?.charAt(0) || 'U'
                       )}

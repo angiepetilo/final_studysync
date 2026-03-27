@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import CollaborationClient from './CollaborationClient'
 import { getCollaborations } from '@/lib/actions/student'
@@ -14,32 +14,32 @@ export default function CollaborationsPage() {
     userProfile: any
   } | null>(null)
 
-  useEffect(() => {
-    async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      const [collaborations, profileRes] = await Promise.all([
-        getCollaborations(user.id),
-        supabase.from('profiles').select('full_name').eq('id', user.id).single()
-      ])
-
-      setData({
-        collaborations,
-        userProfile: {
-          id: user.id,
-          full_name: profileRes.data?.full_name || '',
-          email: user.email || ''
-        }
-      })
+  const loadData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       setLoading(false)
+      return
     }
 
+    const [collaborations, profileRes] = await Promise.all([
+      getCollaborations(user.id),
+      supabase.from('profiles').select('full_name').eq('id', user.id).single()
+    ])
+
+    setData({
+      collaborations,
+      userProfile: {
+        id: user.id,
+        full_name: profileRes.data?.full_name || '',
+        email: user.email || ''
+      }
+    })
+    setLoading(false)
+  }, [supabase, setData, setLoading])
+
+  useEffect(() => {
     loadData()
-  }, [supabase])
+  }, [loadData])
 
   if (loading) {
     return <DashboardSkeleton />

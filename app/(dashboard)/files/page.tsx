@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { 
@@ -67,7 +67,7 @@ export default function FilesPage() {
 
   const courses = globalCourses
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     if (!user) return
     setLoading(true)
     
@@ -102,7 +102,7 @@ export default function FilesPage() {
 
     setFiles(allFiles)
     setLoading(false)
-  }
+  }, [user, supabase, setFiles, setLoading])
 
   useEffect(() => {
     if (!contextLoading && user) {
@@ -110,7 +110,7 @@ export default function FilesPage() {
     } else if (!contextLoading && !user) {
       setLoading(false)
     }
-  }, [user, contextLoading, supabase])
+  }, [user, contextLoading, fetchFiles])
 
   const handleFileSelect = (file: globalThis.File) => {
     if (file.size > 50 * 1024 * 1024) {
